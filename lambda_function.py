@@ -153,7 +153,12 @@ def lambda_handler(event, context):
     ipToWhitelist  = event.get('ip', None)
     success = update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist)
     remove_security_groups(ec2Client,expiredGroupIds)
-    return success
+    return {
+        "isBase64Encoded": False,
+        "statusCode": 200,
+        "headers": { },
+        "body": success
+    }
 
 # CLI testing
-# logger.info("Result of lambda invocation: "+lambda_handler({'ip': '192.168.1.42'},None) )
+#logger.info("Result of lambda invocation: "+pformat(lambda_handler({'ip': '192.168.1.42'},None)) )
