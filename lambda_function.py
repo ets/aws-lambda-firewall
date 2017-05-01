@@ -127,7 +127,7 @@ def get_expired_security_groups(client):
             expireTime = groupDesc.split(' ')[1]
             timeTillExpiration   = int(time.time()) - int(expireTime)
             logger.info("**** in debug mode defaulting to delete all the time *****")
-            if True: #timeTillExpiration > int(0):
+            if timeTillExpiration > int(0):
                 try:
                     groupIds.append(sg['GroupId'])
                 except Exception as e:
@@ -150,10 +150,10 @@ def lambda_handler(event, context):
     ipToWhitelist  = event.get('ip', None)
     update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist)
     remove_security_groups(ec2Client,expiredGroupIds)
-
+    return
 
 # CLI testing
-ec2Client = get_bolo_client('ec2')
-expiredGroupIds = get_expired_security_groups(ec2Client)
-update_whitelist(ec2Client,expiredGroupIds,'47.22.154.66')
-remove_security_groups(ec2Client,expiredGroupIds)
+# ec2Client = get_bolo_client('ec2')
+# expiredGroupIds = get_expired_security_groups(ec2Client)
+# update_whitelist(ec2Client,expiredGroupIds,'your_ip_goes_here')
+# remove_security_groups(ec2Client,expiredGroupIds)
