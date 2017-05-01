@@ -129,7 +129,6 @@ def get_expired_security_groups(client):
             groupId = sg['GroupId']
             expireTime = groupDesc.split(' ')[1]
             timeTillExpiration   = int(time.time()) - int(expireTime)
-            logger.info("**** in debug mode defaulting to delete all the time *****")
             if timeTillExpiration > int(0):
                 try:
                     groupIds.append(sg['GroupId'])
@@ -150,15 +149,22 @@ def lambda_handler(event, context):
     logger.info('got event{}'.format(event))
     ec2Client = get_bolo_client('ec2')
     expiredGroupIds = get_expired_security_groups(ec2Client)
-    ipToWhitelist  = event.get('ip', None)
+    ipToWhitelist = None
+    try:
+        ipToWhitelist = event['requestContext']['identity']['sourceIp']
+    except KeyError as e:
+        logger.error( 'FAIL: failed to extract a sourceIP for the request: ' + str(e))
+
     success = update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist)
     remove_security_groups(ec2Client,expiredGroupIds)
     return {
         "isBase64Encoded": False,
-        "statusCode": 200,
+        "statusCode": 200 if success else 400,
         "headers": { },
         "body": success
     }
 
 # CLI testing
-#logger.info("Result of lambda invocation: "+pformat(lambda_handler({'ip': '192.168.1.42'},None)) )
+#exampleLambdaAPIGatewayProxyRequest = {u'body': u'{"test":"body"}', u'resource': u'/{proxy+}', u'requestContext': {u'resourceId': u'123456', u'apiId': u'1234567890', u'resourcePath': u'/{proxy+}', u'httpMethod': u'POST', u'requestId': u'c6af9ac6-7b61-11e6-9a41-93e8deadbeef', u'stage': u'prod', u'identity': {u'apiKey': None, u'userArn': None, u'sourceIp': u'127.0.0.1', u'caller': None, u'cognitoIdentityId': None, u'user': None, u'cognitoIdentityPoolId': None, u'userAgent': u'Custom User Agent String', u'accountId': None, u'cognitoAuthenticationType': None, u'cognitoAuthenticationProvider': None}, u'accountId': u'123456789012'}, u'queryStringParameters': {u'foo': u'bar'}, u'httpMethod': u'POST', u'pathParameters': {u'proxy': u'path/to/resource'}, u'headers': {u'Via': u'1.1 08f323deadbeefa7af34d5feb414ce27.cloudfront.net (CloudFront)', u'Accept-Language': u'en-US,en;q=0.8', u'CloudFront-Is-Desktop-Viewer': u'true', u'CloudFront-Is-SmartTV-Viewer': u'false', u'CloudFront-Forwarded-Proto': u'https', u'X-Forwarded-Port': u'443', u'X-Forwarded-For': u'127.0.0.1, 127.0.0.2', u'CloudFront-Viewer-Country': u'US', u'Accept': u'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8', u'Upgrade-Insecure-Requests': u'1', u'Host': u'1234567890.execute-api.us-east-1.amazonaws.com', u'X-Forwarded-Proto': u'https', u'X-Amz-Cf-Id': u'cDehVQoZnx43VYQb9j2-nvCh-9z396Uhbp027Y2JvkCPNLmGJHqlaA==', u'CloudFront-Is-Tablet-Viewer': u'false', u'Cache-Control': u'max-age=0', u'User-Agent': u'Custom User Agent String', u'CloudFront-Is-Mobile-Viewer': u'false', u'Accept-Encoding': u'gzip, deflate, sdch'}, u'stageVariables': {u'baz': u'qux'}, u'path': u'/path/to/resource'}
+#result = lambda_handler(exampleLambdaAPIGatewayProxyRequest,None)
+#logger.info("Result of lambda invocation: "+pformat(result) )

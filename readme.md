@@ -28,6 +28,16 @@ IAM policies required by the role assigned to the lambda
       "Resource": [
         "*"
       ]
+    },
+    {
+        "Sid": "cloudwatchloggingforwhitelister",
+        "Effect": "Allow",
+        "Action": [
+            "logs:*"
+        ],
+        "Resource": [
+            "arn:aws:logs:*:*:*"
+        ]
     }
   ]
 }
@@ -36,22 +46,19 @@ IAM policies required by the role assigned to the lambda
 Description
 ------------
 
-The Lambda firewall can be used in sensitive environments where you want to keep strict control over security groups. Users with a valid API gateway key can make a request to whitelist a IP address for a specific duration without the need for access to the console. After the security group expires, it is automatically detached from the EC2 instances and removed. You no longer need to add or remove security groups manually, which is especially useful for users with many different  breakout IP addresses.
+The Lambda firewall can be used in sensitive environments where you want to keep strict control over security groups. Users with a valid API gateway key can make a request to whitelist a IP address for a specific duration without the need for access to the console. After the security group expires, it is automatically detached from the EC2 instances and removed. You no longer need to add or remove security groups manually, which is especially useful for users with many different breakout IP addresses.
 
 Installation
 ------------
 
 You need to install two things in order for the firewall to work;
 
-1. Add the Lambda function to your account with handler "lambda_function.lambda_handler" and configure it with proper IAM permissions to run (see section above)
-2. Create an API gateway and map the correct GET parameters to the Lambda function.
-3. Create API keys for users in the API gateway and deploy the gateway to production.
-4. Next, create a trigger in CloudWatch so the Lambda function is called every 15 minutes to remove expired security groups.
-5. Configure a valid API key and the correct Lambda URL in "firewall_client.py" and distribute it to your users.
-
-Make sure to use and enable CloudWatch logs if the Lambda function does not work.
-
-
+1. Add the Lambda function to your account with Python 2.x handler "lambda_function.lambda_handler"
+2. Use the API Gateway trigger and for Security use "Open with Access Key"
+3. Configure the Lambda with the IAM Role defined using the rules in the section above
+4. Next, create a second trigger for your Lambda using CloudWatch and set it to call the lambda periodically to delete expired groups
+5. Under API Gateway, create a Usage Plan with a set of API Keys
+5. Add a valid API key and the correct Lambda URL in the "firewall_client" scripts and distribute it to your users.
 
 Usage
 -----
