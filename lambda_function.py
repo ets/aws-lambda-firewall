@@ -65,6 +65,8 @@ def update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist):
                     logger.info("Removed ["+pformat(expiredGroupIds)+"] from ["+pformat(allSGIds)+"] resulting in ["+pformat(unexpiredSGIds)+"]")
                     ec2Client.modify_instance_attribute(Groups = unexpiredSGIds, InstanceId = instanceId)
 
+        return sgidToAttach
+
 def update_https_access(ec2Client,expiredGroupIds,ipToWhitelist):
     if len(whiteListHTTPTargets) > 0:
         # Create the new SecurityGroup permitting HTTPS Ingress for the source IP
@@ -98,10 +100,11 @@ def update_https_access(ec2Client,expiredGroupIds,ipToWhitelist):
                         LoadBalancerArn=lbARN,
                         SecurityGroups=unexpiredSGIds
                     )
+        return sgidToAttach
 
 def update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist):
-    update_https_access(ec2Client,expiredGroupIds,ipToWhitelist)
-    update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist)
+    return update_https_access(ec2Client,expiredGroupIds,ipToWhitelist) and update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist)
+
 
 def get_bolo_client(serv):
     s               = boto3.session.Session()
@@ -148,12 +151,9 @@ def lambda_handler(event, context):
     ec2Client = get_bolo_client('ec2')
     expiredGroupIds = get_expired_security_groups(ec2Client)
     ipToWhitelist  = event.get('ip', None)
-    update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist)
+    success = update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist)
     remove_security_groups(ec2Client,expiredGroupIds)
-    return
+    return success
 
 # CLI testing
-# ec2Client = get_bolo_client('ec2')
-# expiredGroupIds = get_expired_security_groups(ec2Client)
-# update_whitelist(ec2Client,expiredGroupIds,'your_ip_goes_here')
-# remove_security_groups(ec2Client,expiredGroupIds)
+# logger.info("Result of lambda invocation: "+lambda_handler({'ip': '192.168.1.42'},None) )
