@@ -103,7 +103,10 @@ def update_https_access(ec2Client,expiredGroupIds,ipToWhitelist):
         return sgidToAttach
 
 def update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist):
-    return update_https_access(ec2Client,expiredGroupIds,ipToWhitelist) and update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist)
+    sgids = []
+    sgids.append( update_https_access(ec2Client,expiredGroupIds,ipToWhitelist) )
+    sgids.append( update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist) )
+    return sgids
 
 
 def get_bolo_client(serv):
@@ -161,7 +164,7 @@ def lambda_handler(event, context):
         "isBase64Encoded": False,
         "statusCode": 200 if success else 400,
         "headers": { },
-        "body": success
+        "body":  success
     }
 
 # CLI testing
