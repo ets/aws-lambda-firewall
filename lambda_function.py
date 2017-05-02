@@ -19,16 +19,19 @@ whiteListHTTPTargets = ["arn:aws:elasticloadbalancing:us-east-1:903373720037:loa
 ##### do not touch anything below this line #####
 
 import boto3, re, time
+from botocore.exceptions import ClientError
 import logging, sys
 from pprint import pformat
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 
 ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.INFO)
+ch.setLevel(logging.WARNING)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+
+results = []
 
 def update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist):
     if len(whitelistSSHTargets) > 0:
@@ -43,8 +46,15 @@ def update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist):
                 resp = ec2Client.create_security_group(GroupName = name, Description = desc, VpcId = vpcId)
                 sgidToAttach = resp.get(u'GroupId')
                 ec2Client.authorize_security_group_ingress(GroupId = sgidToAttach, IpProtocol = 'TCP', CidrIp = ipToWhitelist+'/32', FromPort = 22, ToPort = 22)
-            except Exception as e:
-                logger.error( 'Unable to create SecurityGroup ['+name+'] for SSH access: '+str(e))
+                results.append("Added "+ipToWhitelist+" to firewall for SSH access.")                
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'InvalidGroup.Duplicate':
+                    results.append("Your IP is already whitelisted for SSH access")
+                    return
+                else:
+                    result = 'Unable to create SecurityGroup ['+name+'] for SSH access: '+str(e)
+                    results.append(result)
+                    logger.error( result )
 
         # If we have a new SecurityGroup to attach or any to remove...update the instances
         if sgidToAttach or len(expiredGroupIds) > 0:
@@ -81,8 +91,15 @@ def update_https_access(ec2Client,expiredGroupIds,ipToWhitelist):
                 sgidToAttach = resp.get(u'GroupId')
                 ec2Client.authorize_security_group_ingress(GroupId = sgidToAttach, IpProtocol = 'TCP', CidrIp = ipToWhitelist+'/32', FromPort = 80, ToPort = 80)
                 ec2Client.authorize_security_group_ingress(GroupId = sgidToAttach, IpProtocol = 'TCP', CidrIp = ipToWhitelist+'/32', FromPort = 443, ToPort = 443)
-            except Exception as e:
-                logger.error( 'Unable to create SecurityGroup ['+name+'] for HTTPS access: '+str(e))
+                results.append("Added "+ipToWhitelist+" to firewall for HTTP/S access.")
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'InvalidGroup.Duplicate':
+                    results.append("Your IP is already whitelisted for HTTP/S access")
+                    return
+                else:
+                    result = 'Unable to create SecurityGroup ['+name+'] for HTTP/S access: '+str(e)
+                    results.append(result)
+                    logger.error( result )
 
         # If we have a new SecurityGroup to attach or any to remove...update the instances
         if sgidToAttach or len(expiredGroupIds) > 0:
@@ -103,11 +120,8 @@ def update_https_access(ec2Client,expiredGroupIds,ipToWhitelist):
         return sgidToAttach
 
 def update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist):
-    sgids = []
-    sgids.append( update_https_access(ec2Client,expiredGroupIds,ipToWhitelist) )
-    sgids.append( update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist) )
-    return sgids
-
+    update_https_access(ec2Client,expiredGroupIds,ipToWhitelist)
+    update_ssh_access(ec2Client,expiredGroupIds,ipToWhitelist)
 
 def get_bolo_client(serv):
     s               = boto3.session.Session()
@@ -136,7 +150,9 @@ def get_expired_security_groups(client):
                 try:
                     groupIds.append(sg['GroupId'])
                 except Exception as e:
-                    logger.error( 'FAIL: failed marking GroupId='+ str(groupId) + ' for deletion: ' + str(e))
+                    result = 'FAIL: failed marking GroupId='+ str(groupId) + ' for deletion: ' + str(e)
+                    results.append(result)
+                    logger.error( result )
 
     return groupIds
 
@@ -156,15 +172,16 @@ def lambda_handler(event, context):
     try:
         ipToWhitelist = event['requestContext']['identity']['sourceIp']
     except KeyError as e:
-        logger.error( 'FAIL: failed to extract a sourceIP for the request: ' + str(e))
+        # This is a CloudWatch request without a full API Gateway Proxy context
+        ipToWhitelist = None
 
-    success = update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist)
+    update_whitelist(ec2Client,expiredGroupIds,ipToWhitelist)
     remove_security_groups(ec2Client,expiredGroupIds)
     return {
         "isBase64Encoded": False,
-        "statusCode": 200 if success else 400,
+        "statusCode": 200,
         "headers": { },
-        "body":  success
+        "body":  '. '.join(results)
     }
 
 # CLI testing
