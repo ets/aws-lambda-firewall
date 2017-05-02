@@ -22,6 +22,7 @@ IAM policies required by the role assigned to the lambda
         "ec2:DescribeInstances",
         "ec2:DescribeNetworkAcls",
         "ec2:DescribeSecurityGroups",
+        "ec2:ModifyInstanceAttribute",
         "ec2:RevokeSecurityGroupEgress",
         "ec2:RevokeSecurityGroupIngress"
       ],
