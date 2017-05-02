@@ -24,7 +24,11 @@ IAM policies required by the role assigned to the lambda
         "ec2:DescribeSecurityGroups",
         "ec2:ModifyInstanceAttribute",
         "ec2:RevokeSecurityGroupEgress",
-        "ec2:RevokeSecurityGroupIngress"
+        "ec2:RevokeSecurityGroupIngress",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:SetSecurityGroups"
       ],
       "Resource": [
         "*"
