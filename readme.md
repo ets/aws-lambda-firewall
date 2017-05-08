@@ -1,7 +1,9 @@
 aws-lambda-firewall
 ===================
 
-Fork of https://github.com/marekq/aws-lambda-firewall altered to support end users behind dynamic IPs who can "knock for access" using a valid API Gateway token. By making a valid call to this AWS Lambda function behind an AWS API Gateway, the end user's IP is added (for 24 hours) to a security group that permits access to other resources.
+This was initially a fork of https://github.com/marekq/aws-lambda-firewall but was subsequently rewritten. Current usecase scenario is to support end users behind dynamic IPs who can "knock for access" using a valid API Gateway token. By making a valid call to this AWS Lambda function behind an AWS API Gateway, the end user's IP is added (for 24 hours) to security groups that permit access to other resources.
+
+This allows us to restrict access to ports (e.g. SSH port on our Bastion host or 443 on the ELB that fronts our development & test servers) but allow access to authorized users without the need to establish a VPN or otherwise modify routing across the Internet.
 
 IAM policies required by the role assigned to the lambda
 ---------------------------------------------------------
@@ -43,7 +45,17 @@ IAM policies required by the role assigned to the lambda
         "Resource": [
             "arn:aws:logs:*:*:*"
         ]
-    }
+    },
+    {
+          "Sid": "simpleDBdatastorageforwhitelister",
+          "Effect": "Allow",
+          "Action": [
+              "sdb:*"
+          ],
+          "Resource": [
+              "arn:aws:sdb:us-east-1:903373720037:domain/SIMPLEDB_DOMAIN_NAME_DECLARED_IN_LAMBDA_SCRIPT"
+          ]
+      }    
   ]
 }
 ```
@@ -51,14 +63,12 @@ IAM policies required by the role assigned to the lambda
 Description
 ------------
 
-The Lambda firewall can be used in sensitive environments where you want to keep strict control over security groups. Users with a valid API gateway key can make a request to whitelist a IP address for a specific duration without the need for access to the console. After the security group expires, it is automatically detached from the EC2 instances and removed. You no longer need to add or remove security groups manually, which is especially useful for users with many different breakout IP addresses.
+The Lambda firewall can be used in sensitive environments where you want to keep strict control over security groups. Users with a valid API gateway key can make a request to temporarily whitelist their IP address for a specific duration without the need for access to the console or IAM permissions to alter Security Groups. After the whitelist entry expires, it is automatically removed. You no longer need to add or remove ingress rules or security groups manually, which is especially useful for users with many different breakout IP addresses.
 
 Installation
 ------------
 
-You need to install two things in order for the firewall to work;
-
-1. Add the Lambda function to your account with Python 2.x handler "lambda_function.lambda_handler"
+1. Add the Lambda function (lambda_function.py) to your account with a Python 2.x handler "lambda_function.lambda_handler"
 2. Use the API Gateway trigger and for Security use "Open with Access Key"
 3. Configure the Lambda with the IAM Role defined using the rules in the section above
 4. Next, create a second trigger for your Lambda using CloudWatch and set it to call the lambda periodically to delete expired groups
@@ -67,14 +77,7 @@ You need to install two things in order for the firewall to work;
 
 Usage
 -----
-- Security groups are added by the firewall_client which can be called manually by your users.
-- Rules are removed when the function is called by the API gateway or when a valid API call is received.
-
-TODO
------
-- Hold IP & Expiration in SimpleDB so that we can add/remove rules to a single SG and avoid the SG limits per instance
-  - This will require a major refactoring where it likely makes sense to apply/remove rules to a single "DynamicSG" distinct from "Static SGs"
-    - Since each SG is limited to 50 rules...support creation of additional SGs and then removal after all rules expire
+- To whitelist your IP, call the firewall_client (python and CURL examples included) manually
 
 Contact
 -------
