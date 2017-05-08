@@ -70,6 +70,12 @@ Usage
 - Security groups are added by the firewall_client which can be called manually by your users.
 - Rules are removed when the function is called by the API gateway or when a valid API call is received.
 
+TODO
+-----
+- Hold IP & Expiration in SimpleDB so that we can add/remove rules to a single SG and avoid the SG limits per instance
+  - This will require a major refactoring where it likely makes sense to apply/remove rules to a single "DynamicSG" distinct from "Static SGs"
+    - Since each SG is limited to 50 rules...support creation of additional SGs and then removal after all rules expire
+
 Contact
 -------
 
