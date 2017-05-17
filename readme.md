@@ -2,7 +2,7 @@ aws-lambda-firewall
 ===================
 Use a secure & convenient "knock for access" protocol for creating/expiring AWS Security Group ingress rules.
 
-This was initially a fork of https://github.com/marekq/aws-lambda-firewall but was subsequently rewritten. Current usecase scenarios are:
+Current usecase scenarios are:
 
 * Allow authorized users to add their current IP address to multiple security groups thereby granting access to ports 22,80,443 on specific [EC2 instances](https://aws.amazon.com/ec2/) and/or [ELBs](https://aws.amazon.com/elasticloadbalancing/)
 * Conveniently support access for users behind dynamic IP addresses without opening up sensitive ports to the public internet
@@ -84,6 +84,10 @@ Installation
 Usage
 -----
 - To whitelist your IP, call the firewall_client (python and CURL examples included) manually
+
+History
+-------
+* 2017-05-01 This was initially a fork of https://github.com/marekq/aws-lambda-firewall but was subsequently rewritten
 
 Contact
 -------
