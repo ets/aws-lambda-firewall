@@ -1,7 +1,13 @@
 aws-lambda-firewall
 ===================
+Use a secure & convenient "knock for access" protocol for creating/expiring AWS Security Group ingress rules.
 
-This was initially a fork of https://github.com/marekq/aws-lambda-firewall but was subsequently rewritten. Current usecase scenario is to support end users behind dynamic IPs who can "knock for access" using a valid API Gateway token. By making a valid call to this AWS Lambda function behind an AWS API Gateway, the end user's IP is added (for 24 hours) to security groups that permit access to other resources.
+This was initially a fork of https://github.com/marekq/aws-lambda-firewall but was subsequently rewritten. Current usecase scenarios are:
+
+* Allow authorized users to add their current IP address to multiple security groups thereby granting access to ports 22,80,443 on specific [EC2 instances](https://aws.amazon.com/ec2/) and/or [ELBs](https://aws.amazon.com/elasticloadbalancing/)
+* Conveniently support access for users behind dynamic IP addresses without opening up sensitive ports to the public internet
+
+End users "knock for access" using a valid API Gateway token. By making a valid call to this AWS Lambda function behind an AWS API Gateway, the end user's IP is added (for 24 hours) to security groups that permit access to other resources.
 
 This allows us to restrict access to ports (e.g. SSH port on our Bastion host or 443 on the ELB that fronts our development & test servers) but allow access to authorized users without the need to establish a VPN or otherwise modify routing across the Internet.
 
@@ -12,7 +18,7 @@ IAM policies required by the role assigned to the lambda
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "Stmt1392679134000",
+      "Sid": "securityGroupManipulationPermissions",
       "Effect": "Allow",
       "Action": [
         "ec2:AuthorizeSecurityGroupEgress",
@@ -63,7 +69,7 @@ IAM policies required by the role assigned to the lambda
 Description
 ------------
 
-The Lambda firewall can be used in sensitive environments where you want to keep strict control over security groups. Users with a valid API gateway key can make a request to temporarily whitelist their IP address for a specific duration without the need for access to the console or IAM permissions to alter Security Groups. After the whitelist entry expires, it is automatically removed. You no longer need to add or remove ingress rules or security groups manually, which is especially useful for users with many different breakout IP addresses.
+The Lambda firewall can be used in sensitive environments where you want to keep strict control over security groups. Users with a valid API gateway key can make a request to temporarily whitelist their IP address for a specific duration without the need for access to the console or IAM permissions to alter Security Groups. After the whitelist entry expires, it is automatically removed. You no longer need to add or remove ingress rules or security groups manually, which is especially useful for users with many different source/origin IP addresses.
 
 Installation
 ------------
